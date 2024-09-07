@@ -1,14 +1,20 @@
-use candid::Principal;
-use ic_cdk::api::{call::CallResult, time};
+use candid::{Nat, Principal};
+use ic_cdk::{api::time, id};
 use ic_ledger_types::{
     account_balance, query_archived_blocks, query_blocks, transfer, AccountBalanceArgs,
-    AccountIdentifier, Block, BlockIndex, GetBlocksArgs, Memo, Operation, Timestamp, Tokens,
-    TransferArgs, TransferResult, DEFAULT_SUBACCOUNT, MAINNET_LEDGER_CANISTER_ID,
+    AccountIdentifier, Block, BlockIndex, GetBlocksArgs, Memo, Operation, Subaccount, Timestamp,
+    Tokens, TransferArgs, DEFAULT_SUBACCOUNT, MAINNET_CYCLES_MINTING_CANISTER_ID,
+    MAINNET_LEDGER_CANISTER_ID,
 };
 
-use crate::{api_error::ApiError, CanisterResult};
+use crate::{
+    api_error::ApiError,
+    cycles_minting::{CyclesMintingService, NotifyTopUpArg, NotifyTopUpResult},
+    misc::generic::{ICP_TRANSACTION_FEE, MEMO_TOP_UP_CANISTER, TRILLION_CYCLES},
+    CanisterResult,
+};
 
-pub async fn transfer_icp(to: Principal, amount_e8s: u64) -> CallResult<TransferResult> {
+pub async fn transfer_icp(to: Principal, amount_e8s: u64) -> CanisterResult<BlockIndex> {
     let args = TransferArgs {
         to: principal_to_account_identifier(to),
         amount: Tokens::from_e8s(amount_e8s),
@@ -20,15 +26,73 @@ pub async fn transfer_icp(to: Principal, amount_e8s: u64) -> CallResult<Transfer
         }),
     };
 
-    transfer(MAINNET_LEDGER_CANISTER_ID, args).await
+    match transfer(MAINNET_LEDGER_CANISTER_ID, args).await {
+        Ok(result) => match result {
+            Ok(block_index) => Ok(block_index),
+            Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+        },
+        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+    }
 }
 
-pub async fn get_icp_balance(principal: Principal) -> CallResult<Tokens> {
+pub async fn self_top_up_cycles(icp_amount: u64) -> CanisterResult<Nat> {
+    let block_index = top_up_cycles(icp_amount, id()).await?;
+    notify_top_up_cycles(block_index).await
+}
+
+pub async fn top_up_cycles(icp_amount: u64, canister: Principal) -> CanisterResult<BlockIndex> {
+    let amount = Tokens::from_e8s(icp_amount) - ICP_TRANSACTION_FEE;
+
+    let args = TransferArgs {
+        memo: MEMO_TOP_UP_CANISTER,
+        amount,
+        fee: ICP_TRANSACTION_FEE,
+        from_subaccount: None,
+        to: AccountIdentifier::new(
+            &MAINNET_CYCLES_MINTING_CANISTER_ID,
+            &Subaccount::from(canister),
+        ),
+        created_at_time: Some(Timestamp {
+            timestamp_nanos: time(),
+        }),
+    };
+
+    match transfer(MAINNET_LEDGER_CANISTER_ID, args).await {
+        Ok(result) => match result {
+            Ok(block_index) => Ok(block_index),
+            Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+        },
+        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+    }
+}
+
+pub async fn notify_top_up_cycles(block_index: u64) -> CanisterResult<Nat> {
+    match CyclesMintingService(MAINNET_CYCLES_MINTING_CANISTER_ID)
+        .notify_top_up(NotifyTopUpArg {
+            block_index,
+            canister_id: id(),
+        })
+        .await
+    {
+        Ok((result,)) => match result {
+            NotifyTopUpResult::Ok(cycles) => Ok(cycles),
+            NotifyTopUpResult::Err(_) => {
+                Err(ApiError::bad_request().add_message("Error notifying top up"))
+            }
+        },
+        Err((_, err)) => Err(ApiError::bad_request().add_message(&err)),
+    }
+}
+
+pub async fn get_icp_balance(principal: Principal) -> CanisterResult<Tokens> {
     let args = AccountBalanceArgs {
         account: principal_to_account_identifier(principal),
     };
 
-    account_balance(MAINNET_LEDGER_CANISTER_ID, args).await
+    match account_balance(MAINNET_LEDGER_CANISTER_ID, args).await {
+        Ok(tokens) => Ok(tokens),
+        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+    }
 }
 
 pub async fn validate_transaction(
@@ -83,6 +147,52 @@ async fn get_block(block_index: BlockIndex) -> Option<Block> {
     None
 }
 
+pub async fn get_cycles_per_icp() -> CanisterResult<Nat> {
+    let cycles_minting_service = CyclesMintingService(MAINNET_CYCLES_MINTING_CANISTER_ID);
+    let result = cycles_minting_service
+        .get_icp_xdr_conversion_rate()
+        .await
+        .map(|(rate,)| rate)
+        .map_err(|_| ApiError::bad_request().add_message("Error getting XDR conversion rate"))?;
+
+    Ok(Nat::from(
+        (result.data.xdr_permyriad_per_icp * TRILLION_CYCLES) / 10_000,
+    ))
+}
+
 fn principal_to_account_identifier(principal: Principal) -> AccountIdentifier {
     AccountIdentifier::new(&principal, &DEFAULT_SUBACCOUNT)
+}
+
+pub async fn calculate_total_cycles_available(icp_amount: Nat) -> CanisterResult<Nat> {
+    let cycles_per_icp = get_cycles_per_icp().await?;
+    let calc = e8s_to_f64(&icp_amount) * nat_to_f64(&cycles_per_icp);
+    Ok(Nat::from(calc.round() as u64))
+}
+
+pub async fn calculate_total_icp_required(cycles: Nat) -> CanisterResult<Nat> {
+    let cycles_per_icp = get_cycles_per_icp().await?;
+    let calc = e8s_to_f64(&cycles) / nat_to_f64(&cycles_per_icp);
+    Ok(f64_to_e8s(calc))
+}
+
+pub fn nat_to_f64(n: &Nat) -> f64 {
+    let n_str = n.0.to_string();
+    n_str.parse::<f64>().unwrap()
+}
+
+pub fn f64_to_u64(f: f64) -> u64 {
+    f.round() as u64
+}
+
+pub fn nat_to_u64(n: &Nat) -> u64 {
+    f64_to_u64(nat_to_f64(n))
+}
+
+pub fn f64_to_e8s(f: f64) -> Nat {
+    Nat::from((f * 1e8) as u128)
+}
+
+pub fn e8s_to_f64(n: &Nat) -> f64 {
+    nat_to_f64(n) / 100000000.0
 }
