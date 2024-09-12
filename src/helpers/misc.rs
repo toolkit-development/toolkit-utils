@@ -33,14 +33,12 @@ pub fn e12s_to_f64(n: &Nat) -> f64 {
 pub fn format_with_underscores(value: u64) -> String {
     let s = value.to_string();
     let mut result = String::new();
-    let mut count = 0;
 
-    for c in s.chars().rev() {
+    for (count, c) in s.chars().rev().enumerate() {
         if count != 0 && count % 3 == 0 {
             result.push('_');
         }
         result.push(c);
-        count += 1;
     }
 
     result.chars().rev().collect()
