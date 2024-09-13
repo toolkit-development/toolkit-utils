@@ -1,7 +1,7 @@
 use candid::Principal;
 use ic_cdk::api::management_canister::main::{
-    create_canister, install_code, CanisterInstallMode, CanisterSettings, CreateCanisterArgument,
-    InstallCodeArgument,
+    canister_status, create_canister, install_code, CanisterIdRecord, CanisterInstallMode,
+    CanisterSettings, CreateCanisterArgument, InstallCodeArgument,
 };
 
 use crate::{api_error::ApiError, CanisterResult};
@@ -46,4 +46,11 @@ pub async fn install_canister(
         .map_err(|(_, err)| ApiError::unexpected().add_message(err.as_str()))?;
 
     Ok(canister_id)
+}
+
+pub async fn get_controllers(canister_id: Principal) -> Vec<Principal> {
+    canister_status(CanisterIdRecord { canister_id })
+        .await
+        .map(|(response,)| response.settings.controllers)
+        .unwrap_or_default()
 }

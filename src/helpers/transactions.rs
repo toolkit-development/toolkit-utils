@@ -36,8 +36,35 @@ pub async fn transfer_icp(to: Principal, amount_e8s: u64) -> CanisterResult<Bloc
     }
 }
 
-pub async fn self_top_up_cycles(icp_amount: u64) -> CanisterResult<Nat> {
-    let block_index = top_up_cycles(icp_amount, id()).await?;
+pub async fn transfer_icp_by_account_identifier(
+    to: AccountIdentifier,
+    amount_e8s: u64,
+) -> CanisterResult<BlockIndex> {
+    let args = TransferArgs {
+        to,
+        amount: Tokens::from_e8s(amount_e8s),
+        fee: Tokens::from_e8s(10_000),
+        memo: Memo(0),
+        from_subaccount: None,
+        created_at_time: Some(Timestamp {
+            timestamp_nanos: time(),
+        }),
+    };
+
+    match transfer(MAINNET_LEDGER_CANISTER_ID, args).await {
+        Ok(result) => match result {
+            Ok(block_index) => Ok(block_index),
+            Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+        },
+        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+    }
+}
+
+pub async fn top_up_cycles_and_notify(
+    icp_amount: u64,
+    principal: Principal,
+) -> CanisterResult<Nat> {
+    let block_index = top_up_cycles(icp_amount, principal).await?;
     notify_top_up_cycles(block_index).await
 }
 
@@ -88,6 +115,19 @@ pub async fn notify_top_up_cycles(block_index: u64) -> CanisterResult<Nat> {
 pub async fn get_icp_balance(principal: Principal) -> CanisterResult<Tokens> {
     let args = AccountBalanceArgs {
         account: principal_to_account_identifier(principal),
+    };
+
+    match account_balance(MAINNET_LEDGER_CANISTER_ID, args).await {
+        Ok(tokens) => Ok(tokens),
+        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+    }
+}
+
+pub async fn get_icp_balance_by_account_identifier(
+    account_identifier: AccountIdentifier,
+) -> CanisterResult<Tokens> {
+    let args = AccountBalanceArgs {
+        account: account_identifier,
     };
 
     match account_balance(MAINNET_LEDGER_CANISTER_ID, args).await {
