@@ -123,6 +123,19 @@ pub async fn get_icp_balance(principal: Principal) -> CanisterResult<Tokens> {
     }
 }
 
+pub async fn get_icp_balance_by_canister_subaccount(
+    subaccount: Principal,
+) -> CanisterResult<Tokens> {
+    let args = AccountBalanceArgs {
+        account: AccountIdentifier::new(&id(), &Subaccount::from(subaccount)),
+    };
+
+    match account_balance(MAINNET_LEDGER_CANISTER_ID, args).await {
+        Ok(tokens) => Ok(tokens),
+        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+    }
+}
+
 pub async fn get_icp_balance_by_account_identifier(
     account_identifier: AccountIdentifier,
 ) -> CanisterResult<Tokens> {
