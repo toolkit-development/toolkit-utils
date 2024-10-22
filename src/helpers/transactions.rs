@@ -94,6 +94,36 @@ pub async fn top_up_cycles(icp_amount: u64, canister: Principal) -> CanisterResu
     }
 }
 
+pub async fn top_up_cycles_from_subaccount(
+    icp_amount: u64,
+    canister: Principal,
+    subaccount: Principal,
+) -> CanisterResult<BlockIndex> {
+    let amount = Tokens::from_e8s(icp_amount) - ICP_TRANSACTION_FEE;
+
+    let args = TransferArgs {
+        memo: MEMO_TOP_UP_CANISTER,
+        amount,
+        fee: ICP_TRANSACTION_FEE,
+        from_subaccount: Some(Subaccount::from(subaccount)),
+        to: AccountIdentifier::new(
+            &MAINNET_CYCLES_MINTING_CANISTER_ID,
+            &Subaccount::from(canister),
+        ),
+        created_at_time: Some(Timestamp {
+            timestamp_nanos: time(),
+        }),
+    };
+
+    match transfer(MAINNET_LEDGER_CANISTER_ID, args).await {
+        Ok(result) => match result {
+            Ok(block_index) => Ok(block_index),
+            Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+        },
+        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+    }
+}
+
 pub async fn notify_top_up_cycles(block_index: u64) -> CanisterResult<Nat> {
     match CyclesMintingService(MAINNET_CYCLES_MINTING_CANISTER_ID)
         .notify_top_up(NotifyTopUpArg {

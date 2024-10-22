@@ -16,6 +16,7 @@ sha2 = "0.10"
 ic-cdk = "0.16"
 ic-ledger-types = "0.13.0"
 ic-stable-structures = "0.6"
+base64 = "0.22.1"
 
 email_address = "0.2"
 unicode-segmentation = "1"

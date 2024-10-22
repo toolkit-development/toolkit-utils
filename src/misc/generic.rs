@@ -5,7 +5,8 @@ pub type Time = u64;
 
 // cycles related
 pub static TRILLION_CYCLES: u64 = 1_000_000_000_000;
-pub static MIN_CYCLES_FOR_CANISTER_SPINUP: u64 = TRILLION_CYCLES * 3;
+pub static SAFETY_MARGIN: u64 = 1_000_000_000;
+pub static MIN_CYCLES_FOR_CANISTER_SPINUP: u64 = (TRILLION_CYCLES * 3) - SAFETY_MARGIN;
 
 // cycles management canister related
 pub static MEMO_TOP_UP_CANISTER: Memo = Memo(1347768404_u64);
