@@ -10,13 +10,17 @@ repository = "https://github.com/rem-codes-development/ic-toolkit-utils"
 [dependencies]
 candid = "0.10"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = "1.0"
 sha2 = "0.10"
 
-ic-cdk = "0.16"
+ic-cdk = "0.17"
 ic-ledger-types = "0.13.0"
 ic-stable-structures = "0.6"
 base64 = "0.22.1"
 
 email_address = "0.2"
 unicode-segmentation = "1"
+
+icrc-ledger-types = "0.1"
+wasmparser = "0.219"
+flate2 = "1.0"

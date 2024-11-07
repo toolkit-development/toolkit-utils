@@ -9,8 +9,8 @@ pub static SAFETY_MARGIN: u64 = 1_000_000_000;
 pub static MIN_CYCLES_FOR_CANISTER_SPINUP: u64 = (TRILLION_CYCLES * 3) - SAFETY_MARGIN;
 
 // cycles management canister related
-pub static MEMO_TOP_UP_CANISTER: Memo = Memo(1347768404_u64);
-pub static MEMO_CREATE_CANISTER: Memo = Memo(1095062083_u64);
+pub static MEMO_TOP_UP_CANISTER: Memo = Memo(1347768404);
+pub static MEMO_CREATE_CANISTER: Memo = Memo(1095062083);
 
 // ICP related
 pub static ICP_TRANSACTION_FEE: Tokens = Tokens::from_e8s(10000);

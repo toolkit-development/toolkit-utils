@@ -8,7 +8,10 @@ use ic_ledger_types::{
 
 use crate::{
     api_error::ApiError,
-    cycles_minting::{CyclesMintingService, NotifyTopUpArg, NotifyTopUpResult},
+    cycles_minting::{
+        CyclesMintingService, NotifyCreateCanisterArg, NotifyCreateCanisterResult, NotifyError,
+        NotifyTopUpArg, NotifyTopUpResult,
+    },
     misc::generic::{ICP_TRANSACTION_FEE, MEMO_TOP_UP_CANISTER},
     CanisterResult,
 };
@@ -94,11 +97,11 @@ pub async fn top_up_cycles(icp_amount: u64, canister: Principal) -> CanisterResu
     }
 }
 
-pub async fn top_up_cycles_from_subaccount(
+pub async fn topup_self(
     icp_amount: u64,
     canister: Principal,
     subaccount: Principal,
-) -> CanisterResult<BlockIndex> {
+) -> CanisterResult<Nat> {
     let amount = Tokens::from_e8s(icp_amount) - ICP_TRANSACTION_FEE;
 
     let args = TransferArgs {
@@ -117,7 +120,7 @@ pub async fn top_up_cycles_from_subaccount(
 
     match transfer(MAINNET_LEDGER_CANISTER_ID, args).await {
         Ok(result) => match result {
-            Ok(block_index) => Ok(block_index),
+            Ok(block_index) => self::notify_top_up_cycles(block_index).await,
             Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
         },
         Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
@@ -132,12 +135,77 @@ pub async fn notify_top_up_cycles(block_index: u64) -> CanisterResult<Nat> {
         })
         .await
     {
-        Ok((result,)) => match result {
-            NotifyTopUpResult::Ok(cycles) => Ok(cycles),
-            NotifyTopUpResult::Err(_) => {
-                Err(ApiError::bad_request().add_message("Error notifying top up"))
+        Ok((result,)) => {
+            match result {
+                NotifyTopUpResult::Ok(cycles) => Ok(cycles),
+                NotifyTopUpResult::Err(err) => match err {
+                    NotifyError::Refunded {
+                        block_index,
+                        reason,
+                    } => Err(ApiError::bad_request().add_message(format!(
+                        "Refunded: block_index: {:?}, reason: {:?}",
+                        block_index, reason
+                    ))),
+                    NotifyError::InvalidTransaction(value) => Err(ApiError::bad_request()
+                        .add_message(format!("InvalidTransaction: {:?}", value))),
+                    NotifyError::Other {
+                        error_message,
+                        error_code,
+                    } => Err(ApiError::bad_request().add_message(format!(
+                        "Other: error_message: {}, error_code: {:?}",
+                        error_message, error_code
+                    ))),
+                    NotifyError::Processing => {
+                        Err(ApiError::bad_request().add_message("Processing"))
+                    }
+                    NotifyError::TransactionTooOld(value) => Err(ApiError::bad_request()
+                        .add_message(format!("TransactionTooOld: {:?}", value))),
+                },
             }
-        },
+        }
+        Err((_, err)) => Err(ApiError::bad_request().add_message(&err)),
+    }
+}
+
+pub async fn notify_create(block_index: u64) -> CanisterResult<Principal> {
+    match CyclesMintingService(MAINNET_CYCLES_MINTING_CANISTER_ID)
+        .notify_create_canister(NotifyCreateCanisterArg {
+            block_index,
+            controller: id(),
+            subnet_selection: None,
+            settings: None,
+            subnet_type: None,
+        })
+        .await
+    {
+        Ok((result,)) => {
+            match result {
+                NotifyCreateCanisterResult::Ok(principal) => Ok(principal),
+                NotifyCreateCanisterResult::Err(err) => match err {
+                    NotifyError::Refunded {
+                        block_index,
+                        reason,
+                    } => Err(ApiError::bad_request().add_message(format!(
+                        "Refunded: block_index: {:?}, reason: {:?}",
+                        block_index, reason
+                    ))),
+                    NotifyError::InvalidTransaction(value) => Err(ApiError::bad_request()
+                        .add_message(format!("InvalidTransaction: {:?}", value))),
+                    NotifyError::Other {
+                        error_message,
+                        error_code,
+                    } => Err(ApiError::bad_request().add_message(format!(
+                        "Other: error_message: {}, error_code: {:?}",
+                        error_message, error_code
+                    ))),
+                    NotifyError::Processing => {
+                        Err(ApiError::bad_request().add_message("Processing"))
+                    }
+                    NotifyError::TransactionTooOld(value) => Err(ApiError::bad_request()
+                        .add_message(format!("TransactionTooOld: {:?}", value))),
+                },
+            }
+        }
         Err((_, err)) => Err(ApiError::bad_request().add_message(&err)),
     }
 }
