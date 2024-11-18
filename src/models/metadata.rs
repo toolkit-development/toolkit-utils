@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{impl_storable_for, misc::generic::Time, CanisterResult};
 
-use super::{action_value::ActionValue, custom_root_init_args::CustomRootInitArgs};
+use super::{action_value::ActionValue, project_root_init_args::ProjectRootInitArgs};
 
 impl_storable_for!(Metadata);
 
@@ -77,7 +77,7 @@ impl Metadata {
     }
 
     pub fn update_metadata(&mut self, metadata: UpdateMetadata) -> CanisterResult<()> {
-        let data = CustomRootInitArgs {
+        let data = ProjectRootInitArgs {
             name: metadata
                 .name
                 .unwrap_or(self.name.clone().unwrap_or_default()),

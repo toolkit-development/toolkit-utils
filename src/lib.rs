@@ -10,3 +10,7 @@ pub use models::*;
 pub use services::*;
 pub use traits::*;
 pub use types::*;
+
+// re-export for version compatibility
+pub use ic_ledger_types;
+pub use icrc_ledger_types;

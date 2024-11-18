@@ -1,4 +1,4 @@
-pub mod candid;
+pub mod candid_save;
 pub mod canister;
 pub mod cycles;
 pub mod misc;
