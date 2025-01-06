@@ -376,26 +376,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ic-toolkit-utils"
-version = "0.1.0"
-dependencies = [
- "base64",
- "candid",
- "email_address",
- "flate2",
- "ic-cdk",
- "ic-http-certification",
- "ic-ledger-types",
- "ic-stable-structures",
- "icrc-ledger-types",
- "serde",
- "serde_json",
- "sha2",
- "unicode-segmentation",
- "wasmparser",
-]
-
-[[package]]
 name = "ic0"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -779,6 +759,26 @@ checksum = "3f252a68540fde3a3877aeea552b832b40ab9a69e318efd078774a01ddee1ccf"
 dependencies = [
  "num-conv",
  "time-core",
+]
+
+[[package]]
+name = "toolkit-utils"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "candid",
+ "email_address",
+ "flate2",
+ "ic-cdk",
+ "ic-http-certification",
+ "ic-ledger-types",
+ "ic-stable-structures",
+ "icrc-ledger-types",
+ "serde",
+ "serde_json",
+ "sha2",
+ "unicode-segmentation",
+ "wasmparser",
 ]
 
 [[package]]

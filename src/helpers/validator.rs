@@ -6,6 +6,7 @@ use crate::{
     api_error::ApiError,
     date_range::DateRange,
     validation::{ValidateField, ValidationResponse, ValidationType},
+    CanisterResult,
 };
 
 use super::str::str_len;
@@ -19,7 +20,7 @@ impl Validator {
         Validator { fields }
     }
 
-    pub fn validate(&self) -> Result<(), ApiError> {
+    pub fn validate(&self) -> CanisterResult<()> {
         let mut errors: Vec<ValidationResponse> = vec![];
 
         self.fields.iter().for_each(|f| {

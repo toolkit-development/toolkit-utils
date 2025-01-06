@@ -16,7 +16,11 @@ pub async fn cycles_per_icp() -> CanisterResult<Nat> {
         .get_icp_xdr_conversion_rate()
         .await
         .map(|(rate,)| rate)
-        .map_err(|_| ApiError::external_service_error(Some("Error getting XDR conversion rate")))?;
+        .map_err(|_| {
+            ApiError::external_service_error("Error getting XDR conversion rate")
+                .add_method_name("cycles_per_icp")
+                .add_info("toolkit_utils")
+        })?;
 
     Ok(Nat::from(
         (result.data.xdr_permyriad_per_icp * TRILLION_CYCLES) / 10_000,
@@ -29,7 +33,11 @@ pub async fn xdr_permyriad_per_icp() -> CanisterResult<u64> {
         .get_icp_xdr_conversion_rate()
         .await
         .map(|(rate,)| rate)
-        .map_err(|_| ApiError::external_service_error(Some("Error getting XDR conversion rate")))?;
+        .map_err(|_| {
+            ApiError::external_service_error("Error getting XDR conversion rate")
+                .add_method_name("xdr_permyriad_per_icp")
+                .add_info("toolkit_utils")
+        })?;
 
     Ok(result.data.xdr_permyriad_per_icp)
 }
@@ -41,7 +49,11 @@ pub async fn calculate_icp_fee_in_e8s(xdr_fee: u64) -> CanisterResult<u64> {
         .get_icp_xdr_conversion_rate()
         .await
         .map(|(rate,)| rate)
-        .map_err(|_| ApiError::bad_request(Some("Error getting XDR conversion rate")))?;
+        .map_err(|_| {
+            ApiError::external_service_error("Error getting XDR conversion rate")
+                .add_method_name("calculate_icp_fee_in_e8s")
+                .add_info("toolkit_utils")
+        })?;
 
     // Step 2: Calculate ICP fee in e8s from XDR.
     let xdr_per_icp = result.data.xdr_permyriad_per_icp; // typically around 10,000 for 1 XDR.
