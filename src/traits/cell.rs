@@ -15,17 +15,17 @@ pub trait CellStorage<V: Storable + Clone + 'static> {
         self.storage()
             .with(|data| data.borrow().get().clone())
             .ok_or_else(|| {
-                ApiError::unexpected()
-                    .add_message(format!("Failed to get {}, not initialized", self.name()))
+                ApiError::unexpected(Some(&format!(
+                    "Failed to get {}, not initialized",
+                    self.name()
+                )))
             })
     }
 
     fn set(&self, value: V) -> CanisterResult<V> {
         self.storage()
             .with(|data| data.borrow_mut().set(Some(value.clone())))
-            .map_err(|_| {
-                ApiError::unexpected().add_message(format!("Failed to set {}", self.name()))
-            })?;
+            .map_err(|_| ApiError::unexpected(Some(&format!("Failed to set {}", self.name()))))?;
         Ok(value)
     }
 

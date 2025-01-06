@@ -42,9 +42,15 @@ pub async fn transfer_icp(to: Principal, amount_e8s: u64) -> CanisterResult<Bloc
     match transfer(MAINNET_LEDGER_CANISTER_ID, args).await {
         Ok(result) => match result {
             Ok(block_index) => Ok(block_index),
-            Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+            Err(err) => Err(ApiError::external_service_error(Some(&format!(
+                "{:?}",
+                err
+            )))),
         },
-        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+        Err(err) => Err(ApiError::external_service_error(Some(&format!(
+            "{:?}",
+            err
+        )))),
     }
 }
 
@@ -67,9 +73,15 @@ pub async fn transfer_icp_from_subaccount(
     match transfer(MAINNET_LEDGER_CANISTER_ID, args).await {
         Ok(result) => match result {
             Ok(block_index) => Ok(block_index),
-            Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+            Err(err) => Err(ApiError::external_service_error(Some(&format!(
+                "{:?}",
+                err
+            )))),
         },
-        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+        Err(err) => Err(ApiError::external_service_error(Some(&format!(
+            "{:?}",
+            err
+        )))),
     }
 }
 
@@ -91,9 +103,15 @@ pub async fn transfer_icp_by_account_identifier(
     match transfer(MAINNET_LEDGER_CANISTER_ID, args).await {
         Ok(result) => match result {
             Ok(block_index) => Ok(block_index),
-            Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+            Err(err) => Err(ApiError::external_service_error(Some(&format!(
+                "{:?}",
+                err
+            )))),
         },
-        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+        Err(err) => Err(ApiError::external_service_error(Some(&format!(
+            "{:?}",
+            err
+        )))),
     }
 }
 
@@ -125,13 +143,51 @@ pub async fn top_up_cycles(icp_amount: u64, canister: Principal) -> CanisterResu
     match transfer(MAINNET_LEDGER_CANISTER_ID, args).await {
         Ok(result) => match result {
             Ok(block_index) => Ok(block_index),
-            Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+            Err(err) => Err(ApiError::external_service_error(Some(&format!(
+                "{:?}",
+                err
+            )))),
         },
-        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+        Err(err) => Err(ApiError::external_service_error(Some(&format!(
+            "{:?}",
+            err
+        )))),
     }
 }
 
-pub async fn topup_self(
+pub async fn topup_self(icp_amount: u64, canister: Principal) -> CanisterResult<Nat> {
+    let amount = Tokens::from_e8s(icp_amount - ICP_TRANSACTION_FEE);
+
+    let args = TransferArgs {
+        memo: ic_ledger_types::Memo(MEMO_TOP_UP_CANISTER),
+        amount,
+        fee: Tokens::from_e8s(ICP_TRANSACTION_FEE),
+        from_subaccount: None,
+        to: AccountIdentifier::new(
+            &MAINNET_CYCLES_MINTING_CANISTER_ID,
+            &Subaccount::from(canister),
+        ),
+        created_at_time: None,
+    };
+
+    let transfer = transfer(MAINNET_LEDGER_CANISTER_ID, args).await;
+
+    match transfer {
+        Ok(result) => match result {
+            Ok(block_index) => self::notify_top_up_cycles(block_index).await,
+            Err(err) => Err(ApiError::external_service_error(Some(&format!(
+                "{:?}",
+                err
+            )))),
+        },
+        Err(err) => Err(ApiError::external_service_error(Some(&format!(
+            "{:?}",
+            err
+        )))),
+    }
+}
+
+pub async fn topup_self_by_subaccount(
     icp_amount: u64,
     canister: Principal,
     principal: Principal,
@@ -155,9 +211,15 @@ pub async fn topup_self(
     match transfer {
         Ok(result) => match result {
             Ok(block_index) => self::notify_top_up_cycles(block_index).await,
-            Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+            Err(err) => Err(ApiError::external_service_error(Some(&format!(
+                "{:?}",
+                err
+            )))),
         },
-        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+        Err(err) => Err(ApiError::external_service_error(Some(&format!(
+            "{:?}",
+            err
+        )))),
     }
 }
 
@@ -185,11 +247,14 @@ pub async fn send_to_canister_after_approve(
     let (result,): (Result<Nat, TransferFromError>,) =
         ic_cdk::call(MAINNET_LEDGER_CANISTER_ID, "icrc2_transfer_from", (args,))
             .await
-            .map_err(|err| ApiError::unexpected().add_message(format!("{:?}", err)))?;
+            .map_err(|err| ApiError::external_service_error(Some(&format!("{:?}", err))))?;
 
     match result {
         Ok(block_index) => Ok(nat_to_u64(&block_index)),
-        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+        Err(err) => Err(ApiError::external_service_error(Some(&format!(
+            "{:?}",
+            err
+        )))),
     }
 }
 
@@ -201,35 +266,35 @@ pub async fn notify_top_up_cycles(block_index: u64) -> CanisterResult<Nat> {
         })
         .await
     {
-        Ok((result,)) => {
-            match result {
-                NotifyTopUpResult::Ok(cycles) => Ok(cycles),
-                NotifyTopUpResult::Err(err) => match err {
-                    NotifyError::Refunded {
-                        block_index,
-                        reason,
-                    } => Err(ApiError::bad_request().add_message(format!(
-                        "Refunded: block_index: {:?}, reason: {:?}",
-                        block_index, reason
-                    ))),
-                    NotifyError::InvalidTransaction(value) => Err(ApiError::bad_request()
-                        .add_message(format!("InvalidTransaction: {:?}", value))),
-                    NotifyError::Other {
-                        error_message,
-                        error_code,
-                    } => Err(ApiError::bad_request().add_message(format!(
-                        "Other: error_message: {}, error_code: {:?}",
-                        error_message, error_code
-                    ))),
-                    NotifyError::Processing => {
-                        Err(ApiError::bad_request().add_message("Processing"))
-                    }
-                    NotifyError::TransactionTooOld(value) => Err(ApiError::bad_request()
-                        .add_message(format!("TransactionTooOld: {:?}", value))),
-                },
-            }
-        }
-        Err((_, err)) => Err(ApiError::bad_request().add_message(&err)),
+        Ok((result,)) => match result {
+            NotifyTopUpResult::Ok(cycles) => Ok(cycles),
+            NotifyTopUpResult::Err(err) => match err {
+                NotifyError::Refunded {
+                    block_index,
+                    reason,
+                } => Err(ApiError::external_service_error(Some(&format!(
+                    "Refunded: block_index: {:?}, reason: {:?}",
+                    block_index, reason
+                )))),
+                NotifyError::InvalidTransaction(value) => Err(ApiError::external_service_error(
+                    Some(&format!("InvalidTransaction: {:?}", value)),
+                )),
+                NotifyError::Other {
+                    error_message,
+                    error_code,
+                } => Err(ApiError::external_service_error(Some(&format!(
+                    "Other: error_message: {}, error_code: {:?}",
+                    error_message, error_code
+                )))),
+                NotifyError::Processing => {
+                    Err(ApiError::external_service_error(Some("Processing")))
+                }
+                NotifyError::TransactionTooOld(value) => Err(ApiError::external_service_error(
+                    Some(&format!("TransactionTooOld: {:?}", value)),
+                )),
+            },
+        },
+        Err((_, err)) => Err(ApiError::external_service_error(Some(&err))),
     }
 }
 
@@ -244,35 +309,35 @@ pub async fn notify_create(block_index: u64) -> CanisterResult<Principal> {
         })
         .await
     {
-        Ok((result,)) => {
-            match result {
-                NotifyCreateCanisterResult::Ok(principal) => Ok(principal),
-                NotifyCreateCanisterResult::Err(err) => match err {
-                    NotifyError::Refunded {
-                        block_index,
-                        reason,
-                    } => Err(ApiError::bad_request().add_message(format!(
-                        "Refunded: block_index: {:?}, reason: {:?}",
-                        block_index, reason
-                    ))),
-                    NotifyError::InvalidTransaction(value) => Err(ApiError::bad_request()
-                        .add_message(format!("InvalidTransaction: {:?}", value))),
-                    NotifyError::Other {
-                        error_message,
-                        error_code,
-                    } => Err(ApiError::bad_request().add_message(format!(
-                        "Other: error_message: {}, error_code: {:?}",
-                        error_message, error_code
-                    ))),
-                    NotifyError::Processing => {
-                        Err(ApiError::bad_request().add_message("Processing"))
-                    }
-                    NotifyError::TransactionTooOld(value) => Err(ApiError::bad_request()
-                        .add_message(format!("TransactionTooOld: {:?}", value))),
-                },
-            }
-        }
-        Err((_, err)) => Err(ApiError::bad_request().add_message(&err)),
+        Ok((result,)) => match result {
+            NotifyCreateCanisterResult::Ok(principal) => Ok(principal),
+            NotifyCreateCanisterResult::Err(err) => match err {
+                NotifyError::Refunded {
+                    block_index,
+                    reason,
+                } => Err(ApiError::external_service_error(Some(&format!(
+                    "Refunded: block_index: {:?}, reason: {:?}",
+                    block_index, reason
+                )))),
+                NotifyError::InvalidTransaction(value) => Err(ApiError::external_service_error(
+                    Some(&format!("InvalidTransaction: {:?}", value)),
+                )),
+                NotifyError::Other {
+                    error_message,
+                    error_code,
+                } => Err(ApiError::external_service_error(Some(&format!(
+                    "Other: error_message: {}, error_code: {:?}",
+                    error_message, error_code
+                )))),
+                NotifyError::Processing => {
+                    Err(ApiError::external_service_error(Some("Processing")))
+                }
+                NotifyError::TransactionTooOld(value) => Err(ApiError::external_service_error(
+                    Some(&format!("TransactionTooOld: {:?}", value)),
+                )),
+            },
+        },
+        Err((_, err)) => Err(ApiError::bad_request(Some(&err))),
     }
 }
 
@@ -283,7 +348,10 @@ pub async fn get_icp_balance(principal: Principal) -> CanisterResult<Tokens> {
 
     match account_balance(MAINNET_LEDGER_CANISTER_ID, args).await {
         Ok(tokens) => Ok(tokens),
-        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+        Err(err) => Err(ApiError::external_service_error(Some(&format!(
+            "{:?}",
+            err
+        )))),
     }
 }
 
@@ -304,7 +372,7 @@ pub async fn get_icp_allowance_by_canister_subaccount(
     let (allowance,): (Allowance,) =
         ic_cdk::call(MAINNET_LEDGER_CANISTER_ID, "icrc2_allowance", (args,))
             .await
-            .map_err(|err| ApiError::unexpected().add_message(format!("{:?}", err)))?;
+            .map_err(|err| ApiError::external_service_error(Some(&format!("{:?}", err))))?;
     Ok(allowance)
 }
 
@@ -329,7 +397,7 @@ pub async fn set_icp_approve_by_canister_subaccount(
 
     let (approve,): (Approve,) = ic_cdk::call(MAINNET_LEDGER_CANISTER_ID, "icrc2_approve", (args,))
         .await
-        .map_err(|err| ApiError::unexpected().add_message(format!("{:?}", err)))?;
+        .map_err(|err| ApiError::external_service_error(Some(&format!("{:?}", err))))?;
     Ok(approve)
 }
 
@@ -342,7 +410,10 @@ pub async fn get_icp_balance_by_canister_subaccount(
 
     match account_balance(MAINNET_LEDGER_CANISTER_ID, args).await {
         Ok(tokens) => Ok(tokens),
-        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+        Err(err) => Err(ApiError::external_service_error(Some(&format!(
+            "{:?}",
+            err
+        )))),
     }
 }
 
@@ -355,7 +426,10 @@ pub async fn get_icp_balance_by_account_identifier(
 
     match account_balance(MAINNET_LEDGER_CANISTER_ID, args).await {
         Ok(tokens) => Ok(tokens),
-        Err(err) => Err(ApiError::unexpected().add_message(format!("{:?}", err))),
+        Err(err) => Err(ApiError::external_service_error(Some(&format!(
+            "{:?}",
+            err
+        )))),
     }
 }
 

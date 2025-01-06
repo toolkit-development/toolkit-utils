@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{impl_storable_for, misc::generic::Time, CanisterResult};
 
-use super::{action_value::ActionValue, project_root_init_args::ProjectRootInitArgs};
+use super::{action_value::ActionValue, project_root_init_args::ProjectInitArgs};
 
 impl_storable_for!(Metadata);
 
@@ -16,7 +16,6 @@ pub struct Metadata {
     pub name: Option<String>,
     pub description: Option<String>,
     pub created_by: Account,
-    pub owner: Account,
     pub created_at: Time,
     pub updated_at: Time,
 }
@@ -35,7 +34,6 @@ pub struct MetadataResponse {
     pub description: String,
     pub logo: String,
     pub url: Option<String>,
-    pub owner: Account,
     pub created_by: Account,
     pub created_at: Time,
     pub updated_at: Time,
@@ -48,7 +46,7 @@ impl Default for Metadata {
             description: Default::default(),
             logo: Default::default(),
             url: None,
-            owner: Account::from(Principal::anonymous()),
+
             created_by: Account::from(Principal::anonymous()),
             created_at: Default::default(),
             updated_at: Default::default(),
@@ -68,7 +66,7 @@ impl Metadata {
             name: Some(name),
             description: Some(description),
             logo: Some(logo),
-            owner: Account::from(created_by),
+
             created_by: Account::from(created_by),
             url,
             created_at: time(),
@@ -77,7 +75,7 @@ impl Metadata {
     }
 
     pub fn update_metadata(&mut self, metadata: UpdateMetadata) -> CanisterResult<()> {
-        let data = ProjectRootInitArgs {
+        let data = ProjectInitArgs {
             name: metadata
                 .name
                 .unwrap_or(self.name.clone().unwrap_or_default()),
@@ -134,23 +132,12 @@ impl Metadata {
         )
     }
 
-    pub fn update_owner(&mut self, owner: Account) -> (ActionValue, ActionValue) {
-        let old_member = self.owner;
-        self.owner = owner;
-        self.updated_at = time();
-        (
-            ActionValue::String(old_member.to_string()),
-            ActionValue::String(self.owner.to_string()),
-        )
-    }
-
     pub fn to_response(&self) -> MetadataResponse {
         MetadataResponse {
             name: self.name.clone().unwrap_or_default(),
             description: self.description.clone().unwrap_or_default(),
             logo: self.logo.clone().unwrap_or_default(),
             url: self.url.clone(),
-            owner: self.owner,
             created_by: self.created_by,
             created_at: self.created_at,
             updated_at: self.updated_at,

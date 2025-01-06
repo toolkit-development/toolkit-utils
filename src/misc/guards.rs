@@ -1,7 +1,7 @@
 use candid::Principal;
-use ic_cdk::{caller, id};
+use ic_cdk::{api, caller};
 
-use crate::{api_error::ApiError, canister::get_controllers};
+use crate::{api_error::ApiError, CanisterResult};
 
 /// Validates if the caller is a controller of the canister.
 ///
@@ -15,15 +15,11 @@ use crate::{api_error::ApiError, canister::get_controllers};
 /// # Errors
 ///
 /// - Returns a string error message if the caller is not a controller.
-pub async fn is_controller() -> Result<(), String> {
-    let controllers = get_controllers(id()).await;
-    if controllers.contains(&caller()) {
-        return Ok(());
+pub fn is_controller() -> CanisterResult<()> {
+    if !api::is_controller(&caller()) {
+        return Err(ApiError::unauthorized(Some("Caller is not a controller")));
     }
-
-    Err(ApiError::unauthorized()
-        .add_message("Caller is not a controller")
-        .to_string())
+    Ok(())
 }
 
 /// Ensures that the caller is not anonymous.
@@ -39,9 +35,7 @@ pub async fn is_controller() -> Result<(), String> {
 /// - Returns a string error message if the caller is anonymous.
 pub fn is_not_anonymous() -> Result<(), String> {
     if caller() == Principal::anonymous() {
-        return Err(ApiError::unauthorized()
-            .add_message("Caller is anonymous")
-            .to_string());
+        return Err(ApiError::unauthorized(Some("Caller is anonymous")).to_string());
     }
 
     Ok(())
@@ -60,13 +54,15 @@ pub fn is_not_anonymous() -> Result<(), String> {
 ///
 /// - Returns a string error message if the caller is not an admin.
 pub fn is_admin() -> Result<(), String> {
-    if ["vafd2-aurwj-5igu3-htth5-olb42-6ficf-ttehy-2oyrp-u6nsy-qjlay-7ae"]
-        .contains(&caller().to_string().as_str())
+    if [
+        "vafd2-aurwj-5igu3-htth5-olb42-6ficf-ttehy-2oyrp-u6nsy-qjlay-7ae",
+        "tg7ak-dyvdw-wels6-b4hx3-vaooh-mxn7w-vqvvs-k4mab-ju56d-pqrbf-5qe",
+        "jx573-d63v2-vmp75-c5lgs-evd2l-j2uft-hgxs6-6g7hx-hy4al-o4g3k-qae",
+    ]
+    .contains(&caller().to_string().as_str())
     {
         Ok(())
     } else {
-        Err(ApiError::unauthorized()
-            .add_message("Caller is not an admin")
-            .to_string())
+        Err(ApiError::unauthorized(Some("Caller is not an admin")).to_string())
     }
 }

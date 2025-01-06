@@ -17,10 +17,10 @@ pub struct ApiError {
 }
 
 impl ApiError {
-    pub fn new(error_type: ApiErrorType) -> Self {
+    pub fn new(error_type: ApiErrorType, message: Option<&str>) -> Self {
         ApiError {
             tag: None,
-            message: None,
+            message: message.map(|m| m.to_string()),
             method_name: None,
             error_type,
             info: None,
@@ -29,43 +29,70 @@ impl ApiError {
     }
 
     pub fn validation_response(validation_response: Vec<ValidationResponse>) -> Self {
-        Self::new(ApiErrorType::ValidationError(Box::new(validation_response)))
+        Self::new(
+            ApiErrorType::ValidationError(Box::new(validation_response)),
+            None,
+        )
     }
 
-    pub fn serialize() -> Self {
-        Self::new(ApiErrorType::SerializeError)
+    pub fn not_implemented(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::NotImplemented, message)
     }
 
-    pub fn deserialize() -> Self {
-        Self::new(ApiErrorType::DeserializeError)
+    pub fn serialize(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::SerializeError, message)
     }
 
-    pub fn unexpected() -> Self {
-        Self::new(ApiErrorType::Unexpected)
+    pub fn deserialize(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::DeserializeError, message)
     }
 
-    pub fn not_implemented() -> Self {
-        Self::new(ApiErrorType::NotImplemented)
+    pub fn not_found(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::NotFound, message)
     }
 
-    pub fn unauthorized() -> Self {
-        Self::new(ApiErrorType::Unauthorized)
+    pub fn bad_request(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::BadRequest, message)
     }
 
-    pub fn not_found() -> Self {
-        Self::new(ApiErrorType::NotFound)
+    pub fn unauthorized(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::Unauthorized, message)
     }
 
-    pub fn bad_request() -> Self {
-        Self::new(ApiErrorType::BadRequest)
+    pub fn forbidden(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::Forbidden, message)
     }
 
-    pub fn unsupported() -> Self {
-        Self::new(ApiErrorType::Unsupported)
+    pub fn conflict(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::Conflict, message)
     }
 
-    pub fn duplicate() -> Self {
-        Self::new(ApiErrorType::Duplicate)
+    pub fn external_service_error(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::ExternalServiceError, message)
+    }
+
+    pub fn payload_too_large(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::PayloadTooLarge, message)
+    }
+
+    pub fn service_unavailable(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::ServiceUnavailable, message)
+    }
+
+    pub fn unexpected(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::Unexpected, message)
+    }
+
+    pub fn unsupported(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::Unsupported, message)
+    }
+
+    pub fn duplicate(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::Duplicate, message)
+    }
+
+    pub fn deprecated(message: Option<&str>) -> Self {
+        Self::new(ApiErrorType::Deprecated, message)
     }
 
     pub fn add_tag<S: Display>(mut self, tag: S) -> Self {
@@ -73,6 +100,7 @@ impl ApiError {
         self
     }
 
+    #[deprecated]
     pub fn add_message<S: Display>(mut self, message: S) -> Self {
         self.message = Some(message.to_string());
         self
@@ -103,6 +131,12 @@ pub enum ApiErrorType {
     ValidationError(Box<Vec<ValidationResponse>>),
     SerializeError,
     DeserializeError,
+    PayloadTooLarge,
+    ServiceUnavailable,
+    Conflict,
+    Forbidden,
+    ExternalServiceError,
+    Deprecated,
 }
 
 impl fmt::Display for ApiError {
@@ -129,6 +163,12 @@ impl fmt::Display for ApiErrorType {
             ValidationError(_) => write!(f, "ValidationError"),
             SerializeError => write!(f, "SerializeError"),
             DeserializeError => write!(f, "DeserializeError"),
+            PayloadTooLarge => write!(f, "PayloadTooLarge"),
+            ServiceUnavailable => write!(f, "ServiceUnavailable"),
+            Conflict => write!(f, "Conflict"),
+            Forbidden => write!(f, "Forbidden"),
+            ExternalServiceError => write!(f, "ExternalServiceError"),
+            Deprecated => write!(f, "Deprecated"),
         }
     }
 }
