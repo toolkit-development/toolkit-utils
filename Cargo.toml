@@ -1,11 +1,11 @@
 [package]
-name = "ic-toolkit-utils"
+name = "toolkit-utils"
 version = "0.1.0"
 edition = "2021"
 license = "GPL"
 
 readme = "README.md"
-repository = "https://github.com/rem-codes-development/ic-toolkit-utils"
+repository = "https://github.com/rem-codes-development/toolkit-utils"
 
 [dependencies]
 candid = {version = "0.10", features = ["value"] }
