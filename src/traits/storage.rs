@@ -30,9 +30,11 @@ where
             data.borrow()
                 .get(&key)
                 .ok_or(
-                    ApiError::not_found(None)
+                    ApiError::not_found("")
                         .add_method_name("get")
-                        .add_info(Self::NAME),
+                        .add_info(Self::NAME)
+                        .add_info("storage")
+                        .add_source("toolkit_utils"),
                 )
                 .map(|value| (key, value))
         })
@@ -106,9 +108,11 @@ where
                 .unwrap_or_else(|| 1);
 
             if data.borrow().contains_key(&key) {
-                return Err(ApiError::duplicate(Some("Key already exists"))
+                return Err(ApiError::duplicate("Key already exists")
                     .add_method_name("insert")
-                    .add_info(Self::NAME));
+                    .add_info(Self::NAME)
+                    .add_info("storage")
+                    .add_source("toolkit_utils"));
             }
 
             data.borrow_mut().insert(key, value.clone());
@@ -126,9 +130,11 @@ where
     fn insert_by_key(key: K, value: V) -> CanisterResult<(K, V)> {
         Self::storage().with(|data| {
             if data.borrow().contains_key(&key) {
-                return Err(ApiError::duplicate(Some("Key already exists"))
+                return Err(ApiError::duplicate("Key already exists")
                     .add_method_name("insert_by_key")
-                    .add_info(Self::NAME));
+                    .add_info(Self::NAME)
+                    .add_info("storage")
+                    .add_source("toolkit_utils"));
             }
 
             data.borrow_mut().insert(key.clone(), value.clone());
@@ -152,9 +158,11 @@ where
     fn update(key: K, value: V) -> CanisterResult<(K, V)> {
         Self::storage().with(|data| {
             if !data.borrow().contains_key(&key) {
-                return Err(ApiError::not_found(Some("Key does not exist"))
+                return Err(ApiError::not_found("Key does not exist")
                     .add_method_name("update")
-                    .add_info(Self::NAME));
+                    .add_info(Self::NAME)
+                    .add_info("storage")
+                    .add_source("toolkit_utils"));
             }
 
             data.borrow_mut().insert(key.clone(), value.clone());

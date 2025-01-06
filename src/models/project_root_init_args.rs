@@ -16,15 +16,15 @@ pub struct ProjectInitArgs {
 impl ProjectInitArgs {
     pub fn validate(&self) -> CanisterResult<()> {
         if self.name.len() < 3 {
-            return Err(ApiError::bad_request(Some(
-                "Name must be at least 3 characters",
-            )));
+            return Err(ApiError::bad_request("Name must be at least 3 characters")
+                .add_method_name("validate")
+                .add_source("toolkit_utils"));
         }
 
         if self.logo.is_empty() {
-            return Err(ApiError::bad_request(Some(
-                "Logo is not a valid base64 string.",
-            )));
+            return Err(ApiError::bad_request("Logo is not a valid base64 string.")
+                .add_method_name("validate")
+                .add_source("toolkit_utils"));
         }
 
         Ok(())

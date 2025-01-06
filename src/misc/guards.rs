@@ -17,7 +17,9 @@ use crate::{api_error::ApiError, CanisterResult};
 /// - Returns a string error message if the caller is not a controller.
 pub fn is_controller() -> CanisterResult<()> {
     if !api::is_controller(&caller()) {
-        return Err(ApiError::unauthorized(Some("Caller is not a controller")));
+        return Err(ApiError::forbidden("Caller is not a controller")
+            .add_method_name("is_controller")
+            .add_source("toolkit_utils"));
     }
     Ok(())
 }
@@ -35,7 +37,10 @@ pub fn is_controller() -> CanisterResult<()> {
 /// - Returns a string error message if the caller is anonymous.
 pub fn is_not_anonymous() -> Result<(), String> {
     if caller() == Principal::anonymous() {
-        return Err(ApiError::unauthorized(Some("Caller is anonymous")).to_string());
+        return Err(ApiError::forbidden("Caller is anonymous")
+            .add_method_name("is_controller")
+            .add_source("toolkit_utils")
+            .to_string());
     }
 
     Ok(())
@@ -63,6 +68,9 @@ pub fn is_admin() -> Result<(), String> {
     {
         Ok(())
     } else {
-        Err(ApiError::unauthorized(Some("Caller is not an admin")).to_string())
+        Err(ApiError::forbidden("Caller is not an admin")
+            .add_method_name("is_admin")
+            .add_source("toolkit_utils")
+            .to_string())
     }
 }

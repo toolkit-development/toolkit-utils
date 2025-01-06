@@ -25,7 +25,11 @@ pub async fn deploy_canister(
     create_canister(args, cycles as u128)
         .await
         .map(|(result,)| result.canister_id)
-        .map_err(|(_, err)| ApiError::unexpected(Some(err.as_str())))
+        .map_err(|(_, err)| {
+            ApiError::external_service_error(&err)
+                .add_method_name("deploy_canister")
+                .add_source("toolkit_utils")
+        })
 }
 
 pub async fn install_canister(
@@ -41,9 +45,11 @@ pub async fn install_canister(
         arg: arg.unwrap_or_default(),
     };
 
-    install_code(install_args)
-        .await
-        .map_err(|(_, err)| ApiError::unexpected(Some(err.as_str())))?;
+    install_code(install_args).await.map_err(|(_, err)| {
+        ApiError::external_service_error(&err)
+            .add_method_name("install_canister")
+            .add_source("toolkit_utils")
+    })?;
 
     Ok(canister_id)
 }
