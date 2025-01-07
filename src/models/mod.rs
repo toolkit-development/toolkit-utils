@@ -12,3 +12,5 @@ pub mod path_entry;
 pub mod project_root_init_args;
 pub mod validation;
 pub mod version;
+pub mod wasm;
+pub mod wasm_type;
