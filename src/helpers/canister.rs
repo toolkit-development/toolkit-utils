@@ -4,7 +4,7 @@ use ic_cdk::api::management_canister::main::{
     CanisterSettings, CreateCanisterArgument, InstallCodeArgument,
 };
 
-use crate::{api_error::ApiError, CanisterResult};
+use crate::{api_error::ApiError, result::CanisterResult};
 
 pub async fn deploy_canister(
     cycles: u64,

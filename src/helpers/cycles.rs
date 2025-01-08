@@ -5,7 +5,7 @@ use crate::{
     api_error::ApiError,
     cycles_minting::CyclesMintingService,
     misc::generic::{ICP_E8S, TRILLION_CYCLES},
-    CanisterResult,
+    result::CanisterResult,
 };
 
 use super::misc::{e12s_to_f64, e8s_to_f64, f64_to_e8s, nat_to_u64};

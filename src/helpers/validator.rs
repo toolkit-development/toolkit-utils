@@ -5,8 +5,8 @@ use std::str::FromStr;
 use crate::{
     api_error::ApiError,
     date_range::DateRange,
+    result::CanisterResult,
     validation::{ValidateField, ValidationResponse, ValidationType},
-    CanisterResult,
 };
 
 use super::str::str_len;

@@ -22,7 +22,7 @@ use crate::{
         NotifyTopUpArg, NotifyTopUpResult,
     },
     misc::generic::{ICP_TRANSACTION_FEE, MEMO_TOP_UP_CANISTER},
-    CanisterResult,
+    result::CanisterResult,
 };
 
 use super::misc::{nat_to_u64, principal_to_account_identifier};

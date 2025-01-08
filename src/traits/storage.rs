@@ -4,7 +4,7 @@ use ic_stable_structures::{
     memory_manager::VirtualMemory, DefaultMemoryImpl, StableBTreeMap, Storable,
 };
 
-use crate::{api_error::ApiError, CanisterResult};
+use crate::{api_error::ApiError, result::CanisterResult};
 
 pub type Memory = VirtualMemory<DefaultMemoryImpl>;
 pub type StorageRef<K, V> = RefCell<StableBTreeMap<K, V, Memory>>;

@@ -2,7 +2,7 @@ use std::{cell::RefCell, thread::LocalKey};
 
 use ic_stable_structures::{Cell, Storable};
 
-use crate::{api_error::ApiError, CanisterResult, Memory};
+use crate::{api_error::ApiError, result::CanisterResult, Memory};
 
 pub type CellStorageRef<V> = RefCell<Cell<Option<V>, Memory>>;
 pub type StaticCellStorageRef<V> = &'static LocalKey<CellStorageRef<V>>;
