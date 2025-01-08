@@ -1,7 +1,7 @@
 use candid::{CandidType, Deserialize};
 use serde::Serialize;
 
-use crate::CanisterResult;
+use super::result::CanisterResult;
 
 #[derive(CandidType, Debug, Serialize, Deserialize)]
 pub struct PagedResponse<T> {

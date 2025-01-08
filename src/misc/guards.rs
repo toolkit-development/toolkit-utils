@@ -1,7 +1,7 @@
 use candid::Principal;
 use ic_cdk::{api, caller};
 
-use crate::{api_error::ApiError, CanisterResult};
+use crate::{api_error::ApiError, result::CanisterResult};
 
 /// Validates if the caller is a controller of the canister.
 ///

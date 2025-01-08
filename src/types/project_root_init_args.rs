@@ -1,9 +1,7 @@
 use candid::CandidType;
 use serde::{Deserialize, Serialize};
 
-use crate::CanisterResult;
-
-use super::api_error::ApiError;
+use super::{api_error::ApiError, result::CanisterResult};
 
 #[derive(Clone, Debug, CandidType, Serialize, Deserialize)]
 pub struct ProjectInitArgs {
