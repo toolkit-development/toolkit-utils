@@ -1,4 +1,5 @@
 use candid::{CandidType, Principal};
+use ic_cdk::{api::time, caller};
 use serde::{Deserialize, Serialize};
 
 use crate::impl_storable_for;
@@ -14,8 +15,12 @@ pub struct ManagementConfig {
     pub ledger_canister_id: Option<Principal>,
     pub index_canister_id: Option<Principal>,
     pub governance_canister_id: Principal,
+    pub deployer_canister_id: Principal,
     pub canister_status_fetch_interval_seconds: u64,
     pub deployed_by: Principal,
+    pub is_public: bool,
+    pub upgraded_at: u64,
+    pub created_at: u64,
 }
 
 impl ManagementConfig {
@@ -24,9 +29,22 @@ impl ManagementConfig {
             ledger_canister_id: None,
             index_canister_id: None,
             governance_canister_id,
+            deployer_canister_id: caller(),
             canister_status_fetch_interval_seconds: DEFAULT_CANISTER_STATUS_FETCH_INTERVAL_SECONDS,
             deployed_by,
+            is_public: false,
+            upgraded_at: time(),
+            created_at: time(),
         }
+    }
+
+    pub fn set_upgraded_at(&mut self, value: u64) -> (ActionValue, ActionValue) {
+        let old_updated_at = self.upgraded_at;
+        self.upgraded_at = value;
+        (
+            ActionValue::Number(old_updated_at),
+            ActionValue::Number(value),
+        )
     }
 
     pub fn set_canister_status_fetch_interval(&mut self, value: u64) -> (ActionValue, ActionValue) {
@@ -36,5 +54,11 @@ impl ManagementConfig {
             ActionValue::Number(old_duration),
             ActionValue::Number(value),
         )
+    }
+
+    pub fn set_public(&mut self, value: bool) -> (ActionValue, ActionValue) {
+        let old_value = self.is_public;
+        self.is_public = value;
+        (ActionValue::Bool(old_value), ActionValue::Bool(value))
     }
 }

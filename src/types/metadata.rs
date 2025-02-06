@@ -87,7 +87,7 @@ impl Metadata {
             logo: metadata
                 .logo
                 .unwrap_or(self.logo.clone().unwrap_or_default()),
-            website: Some(metadata.url.unwrap_or(self.url.clone().unwrap_or_default())),
+            url: Some(metadata.url.unwrap_or(self.url.clone().unwrap_or_default())),
         };
 
         data.validate()?;
@@ -95,7 +95,7 @@ impl Metadata {
         self.name = Some(data.name);
         self.description = Some(data.description);
         self.logo = Some(data.logo);
-        self.url = data.website;
+        self.url = data.url;
         self.updated_at = time();
         Ok(())
     }
