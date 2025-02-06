@@ -7,31 +7,29 @@ use crate::{
     misc::{generic::Time, hash::generate_checksum},
 };
 
-use super::{version::Version, wasm_details::WasmDetails};
+use super::version::Version;
 
-impl_storable_for!(Wasm);
+impl_storable_for!(WasmDetails);
 
 #[derive(Debug, CandidType, Serialize, Deserialize, Clone, Default)]
-pub struct Wasm {
+pub struct WasmDetails {
     pub version: Version,
-    pub wasm: Vec<u8>,
+    pub wasm_hash: Vec<u8>,
     pub created_at: Time,
 }
 
-impl Wasm {
+impl WasmDetails {
     pub fn new(wasm: Vec<u8>, version: Version) -> Self {
         Self {
-            wasm,
+            wasm_hash: generate_checksum(&wasm),
             created_at: time(),
             version,
         }
     }
+}
 
-    pub fn to_details(&self) -> WasmDetails {
-        WasmDetails {
-            version: self.version.clone(),
-            wasm_hash: generate_checksum(&self.wasm),
-            created_at: self.created_at,
-        }
-    }
+#[derive(Debug, CandidType, Serialize, Deserialize, Clone)]
+pub struct AllWasmDetails {
+    pub management: WasmDetails,
+    pub governance: WasmDetails,
 }

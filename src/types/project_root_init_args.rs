@@ -8,7 +8,7 @@ pub struct ProjectInitArgs {
     pub name: String,
     pub description: String,
     pub logo: String,
-    pub website: Option<String>,
+    pub url: Option<String>,
 }
 
 impl ProjectInitArgs {
