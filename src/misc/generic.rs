@@ -21,7 +21,7 @@ pub static XDR_FEE_FOR_CANISTER_DEV: u64 = 500; // 0.05 XDR
 pub static XDR_FEE_FOR_CORE_DEV: u64 = 500; // 0.05 XDR
 
 // cycles management canister related
-pub static MEMO_TOP_UP_CANISTER: u64 = 1347768404;
+pub static MEMO_TOP_UP_CANISTER: u64 = 0x50555054;
 pub static MEMO_CREATE_CANISTER: u64 = 1095062083;
 
 // ICP related
