@@ -5,5 +5,5 @@ use serde::Deserialize;
 #[derive(Clone, CandidType, Deserialize)]
 pub struct PathEntry {
     pub match_path: Vec<String>,
-    pub response: HttpResponse,
+    pub response: HttpResponse<'static>,
 }

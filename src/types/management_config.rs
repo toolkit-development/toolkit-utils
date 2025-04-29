@@ -1,5 +1,5 @@
 use candid::{CandidType, Principal};
-use ic_cdk::{api::time, caller};
+use ic_cdk::api::{msg_caller, time};
 use serde::{Deserialize, Serialize};
 
 use crate::impl_storable_for;
@@ -16,6 +16,7 @@ pub struct ManagementConfig {
     pub index_canister_id: Option<Principal>,
     pub governance_canister_id: Principal,
     pub deployer_canister_id: Principal,
+    pub snsw_canister_id: Principal,
     pub canister_status_fetch_interval_seconds: u64,
     pub deployed_by: Principal,
     pub is_public: bool,
@@ -29,8 +30,9 @@ impl ManagementConfig {
             ledger_canister_id: None,
             index_canister_id: None,
             governance_canister_id,
-            deployer_canister_id: caller(),
+            deployer_canister_id: msg_caller(),
             canister_status_fetch_interval_seconds: DEFAULT_CANISTER_STATUS_FETCH_INTERVAL_SECONDS,
+            snsw_canister_id: Principal::from_text("qaa6y-5yaaa-aaaaa-aaafa-cai").unwrap(),
             deployed_by,
             is_public: false,
             upgraded_at: time(),
@@ -60,5 +62,13 @@ impl ManagementConfig {
         let old_value = self.is_public;
         self.is_public = value;
         (ActionValue::Bool(old_value), ActionValue::Bool(value))
+    }
+
+    pub fn set_ledger_canister_id(&mut self, value: Principal) {
+        self.ledger_canister_id = Some(value);
+    }
+
+    pub fn set_index_canister_id(&mut self, value: Principal) {
+        self.index_canister_id = Some(value);
     }
 }

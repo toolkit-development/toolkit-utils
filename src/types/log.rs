@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use candid::{CandidType, Principal};
-use ic_cdk::{api::time, caller};
+use ic_cdk::api::{msg_caller, time};
 use serde::{Deserialize, Serialize};
 
 use crate::{impl_storable_for, misc::generic::Time};
@@ -23,7 +23,7 @@ impl Default for Log {
         Self {
             changes: Default::default(),
             action: Default::default(),
-            initiated_by: caller(),
+            initiated_by: msg_caller(),
             created_at: time(),
         }
     }
@@ -34,7 +34,7 @@ impl Log {
         Self {
             changes: Default::default(),
             action: action.to_string(),
-            initiated_by: caller(),
+            initiated_by: msg_caller(),
             created_at: time(),
         }
     }

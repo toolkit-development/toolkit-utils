@@ -1,7 +1,7 @@
 use candid::Principal;
-use ic_cdk::api::management_canister::main::{
-    canister_status, create_canister, install_code, CanisterIdRecord, CanisterInstallMode,
-    CanisterSettings, CreateCanisterArgument, InstallCodeArgument,
+use ic_cdk::management_canister::{
+    canister_status, create_canister_with_extra_cycles, install_code, CanisterInstallMode,
+    CanisterSettings, CanisterStatusArgs, CreateCanisterArgs, InstallCodeArgs,
 };
 
 use crate::{api_error::ApiError, result::CanisterResult};
@@ -10,7 +10,7 @@ pub async fn deploy_canister(
     cycles: u64,
     controllers: Vec<Principal>,
 ) -> CanisterResult<Principal> {
-    let args = CreateCanisterArgument {
+    let args = CreateCanisterArgs {
         settings: Some(CanisterSettings {
             controllers: Some(controllers),
             compute_allocation: None,
@@ -19,14 +19,15 @@ pub async fn deploy_canister(
             reserved_cycles_limit: None,
             wasm_memory_limit: None,
             log_visibility: None,
+            wasm_memory_threshold: None,
         }),
     };
 
-    create_canister(args, cycles as u128)
+    create_canister_with_extra_cycles(&args, cycles as u128)
         .await
-        .map(|(result,)| result.canister_id)
-        .map_err(|(_, err)| {
-            ApiError::external_service_error(&err)
+        .map(|result| result.canister_id)
+        .map_err(|err| {
+            ApiError::external_service_error(&err.to_string())
                 .add_method_name("deploy_canister")
                 .add_source("toolkit_utils")
         })
@@ -38,15 +39,15 @@ pub async fn install_canister(
     mode: CanisterInstallMode,
     arg: Option<Vec<u8>>,
 ) -> CanisterResult<Principal> {
-    let install_args = InstallCodeArgument {
+    let install_args = InstallCodeArgs {
         mode,
         canister_id,
         wasm_module,
         arg: arg.unwrap_or_default(),
     };
 
-    install_code(install_args).await.map_err(|(_, err)| {
-        ApiError::external_service_error(&err)
+    install_code(&install_args).await.map_err(|err| {
+        ApiError::external_service_error(&err.to_string())
             .add_method_name("install_canister")
             .add_source("toolkit_utils")
     })?;
@@ -55,8 +56,8 @@ pub async fn install_canister(
 }
 
 pub async fn get_controllers(canister_id: Principal) -> Vec<Principal> {
-    canister_status(CanisterIdRecord { canister_id })
+    canister_status(&CanisterStatusArgs { canister_id })
         .await
-        .map(|(response,)| response.settings.controllers)
+        .map(|response| response.settings.controllers)
         .unwrap_or_default()
 }

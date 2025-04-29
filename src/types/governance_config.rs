@@ -1,5 +1,5 @@
 use candid::{CandidType, Principal};
-use ic_cdk::{api::time, caller};
+use ic_cdk::api::{msg_caller, time};
 use icrc_ledger_types::icrc1::account::Account;
 use serde::{Deserialize, Serialize};
 
@@ -33,7 +33,7 @@ impl GovernanceConfig {
         Self {
             hotkeys_enabled: true,
             governance_type: None,
-            deployer_canister_id: caller(),
+            deployer_canister_id: msg_caller(),
             proposal_duration_seconds: DEFAULT_PROPOSAL_DURATION_SECONDS,
             management_canister_id,
             owner: Account::from(owner),
@@ -42,11 +42,11 @@ impl GovernanceConfig {
         }
     }
 
-    pub fn set_upgraded_at(&mut self, value: u64) -> () {
+    pub fn set_upgraded_at(&mut self, value: u64) {
         self.upgraded_at = value;
     }
 
-    pub fn set_governance(&mut self, value: GovernanceType) -> () {
+    pub fn set_governance(&mut self, value: GovernanceType) {
         if let GovernanceType::None = value {
             self.governance_type = None
         } else {
@@ -72,15 +72,15 @@ impl GovernanceConfig {
         )
     }
 
-    pub fn set_proposal_duration_seconds(&mut self, value: u64) -> () {
+    pub fn set_proposal_duration_seconds(&mut self, value: u64) {
         self.proposal_duration_seconds = value;
     }
 
-    pub fn set_owner(&mut self, value: Account) -> () {
+    pub fn set_owner(&mut self, value: Account) {
         self.owner = value;
     }
 
-    pub fn set_hotkeys_enabled(&mut self, value: bool) -> () {
+    pub fn set_hotkeys_enabled(&mut self, value: bool) {
         self.hotkeys_enabled = value;
     }
 }

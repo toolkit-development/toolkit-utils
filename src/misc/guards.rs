@@ -1,5 +1,5 @@
 use candid::Principal;
-use ic_cdk::{api, caller};
+use ic_cdk::api::{self, msg_caller};
 
 use crate::{api_error::ApiError, result::CanisterResult};
 
@@ -16,7 +16,7 @@ use crate::{api_error::ApiError, result::CanisterResult};
 ///
 /// - Returns a string error message if the caller is not a controller.
 pub fn is_controller() -> CanisterResult<()> {
-    if !api::is_controller(&caller()) {
+    if !api::is_controller(&msg_caller()) {
         return Err(ApiError::forbidden("Caller is not a controller")
             .add_method_name("is_controller")
             .add_source("toolkit_utils"));
@@ -36,7 +36,7 @@ pub fn is_controller() -> CanisterResult<()> {
 ///
 /// - Returns a string error message if the caller is anonymous.
 pub fn is_not_anonymous() -> Result<(), String> {
-    if caller() == Principal::anonymous() {
+    if msg_caller() == Principal::anonymous() {
         return Err(ApiError::forbidden("Caller is anonymous")
             .add_method_name("is_controller")
             .add_source("toolkit_utils")
@@ -64,7 +64,7 @@ pub fn is_admin() -> Result<(), String> {
         "tg7ak-dyvdw-wels6-b4hx3-vaooh-mxn7w-vqvvs-k4mab-ju56d-pqrbf-5qe",
         "jx573-d63v2-vmp75-c5lgs-evd2l-j2uft-hgxs6-6g7hx-hy4al-o4g3k-qae",
     ]
-    .contains(&caller().to_string().as_str())
+    .contains(&msg_caller().to_string().as_str())
     {
         Ok(())
     } else {

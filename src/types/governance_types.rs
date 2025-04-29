@@ -1,4 +1,4 @@
-use candid::{CandidType, Principal};
+use candid::CandidType;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -9,9 +9,7 @@ impl fmt::Display for GovernanceType {
             GovernanceType::Permission => "governance::permission".to_string(),
             GovernanceType::Proposal(proposal_type) => match &proposal_type {
                 ProposalType::Member => "governance::proposal::member".to_string(),
-                ProposalType::Token(principal) => {
-                    format!("governance::proposal::token::{}", principal)
-                }
+                ProposalType::Token(_) => "governance::proposal::token".to_string(),
             },
         };
         write!(f, "{}", s)
@@ -26,13 +24,13 @@ impl GovernanceType {
             ["governance", "none"] => GovernanceType::None,
             ["governance", "permission"] => GovernanceType::Permission,
             ["governance", "proposal", "member"] => GovernanceType::Proposal(ProposalType::Member),
-            ["governance", "proposal", "token", principal] => {
-                if let Ok(parsed_principal) = Principal::from_text(principal) {
-                    GovernanceType::Proposal(ProposalType::Token(parsed_principal))
-                } else {
-                    GovernanceType::None
-                }
-            }
+            // ["governance", "proposal", "token"] => {
+            //     if let Ok(parsed_principal) = Principal::from_text(principal) {
+            //         GovernanceType::Proposal(ProposalType::Token())
+            //     } else {
+            //         GovernanceType::None
+            //     }
+            // }
             _ => GovernanceType::None, // Fallback for unexpected input
         }
     }
@@ -47,16 +45,25 @@ pub enum GovernanceType {
 }
 
 #[derive(CandidType, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ProposalTokenInitArgs {
+    pub decimals: u8,
+    pub token_name: String,
+    pub token_symbol: String,
+    pub transfer_fee: u64,
+    pub logo_base64: Option<String>,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ProposalType {
     Member,
-    Token(Principal),
+    Token(ProposalTokenInitArgs),
 }
 
 impl fmt::Display for ProposalType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ProposalType::Member => write!(f, "member"),
-            ProposalType::Token(principal) => write!(f, "token::{}", principal),
+            ProposalType::Token(_) => write!(f, "token"),
         }
     }
 }

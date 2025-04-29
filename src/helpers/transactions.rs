@@ -1,16 +1,19 @@
 use candid::{Nat, Principal};
-use ic_cdk::{api::time, id};
+use ic_cdk::{
+    api::{canister_self, time},
+    call::Call,
+};
 use ic_ledger_types::{
     account_balance, query_archived_blocks, query_blocks, transfer, AccountBalanceArgs,
     AccountIdentifier, Block, BlockIndex, GetBlocksArgs, Operation, Subaccount, Timestamp, Tokens,
     TransferArgs, MAINNET_CYCLES_MINTING_CANISTER_ID, MAINNET_LEDGER_CANISTER_ID,
 };
 use icrc_ledger_types::{
-    icrc1::account::Account,
+    icrc1::{account::Account, transfer::Memo},
     icrc2::{
         allowance::{Allowance, AllowanceArgs},
         approve::ApproveArgs,
-        transfer_from::{TransferFromArgs, TransferFromError},
+        transfer_from::TransferFromArgs,
     },
     icrc3::transactions::Approve,
 };
@@ -39,7 +42,7 @@ pub async fn transfer_icp(to: Principal, amount_e8s: u64) -> CanisterResult<Bloc
         }),
     };
 
-    match transfer(MAINNET_LEDGER_CANISTER_ID, args).await {
+    match transfer(MAINNET_LEDGER_CANISTER_ID, &args).await {
         Ok(result) => match result {
             Ok(block_index) => Ok(block_index),
             Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
@@ -68,7 +71,7 @@ pub async fn transfer_icp_from_subaccount(
         }),
     };
 
-    match transfer(MAINNET_LEDGER_CANISTER_ID, args).await {
+    match transfer(MAINNET_LEDGER_CANISTER_ID, &args).await {
         Ok(result) => match result {
             Ok(block_index) => Ok(block_index),
             Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
@@ -96,7 +99,7 @@ pub async fn transfer_icp_by_account_identifier(
         }),
     };
 
-    match transfer(MAINNET_LEDGER_CANISTER_ID, args).await {
+    match transfer(MAINNET_LEDGER_CANISTER_ID, &args).await {
         Ok(result) => match result {
             Ok(block_index) => Ok(block_index),
             Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
@@ -134,7 +137,7 @@ pub async fn top_up_cycles(icp_amount: u64, canister: Principal) -> CanisterResu
         }),
     };
 
-    match transfer(MAINNET_LEDGER_CANISTER_ID, args).await {
+    match transfer(MAINNET_LEDGER_CANISTER_ID, &args).await {
         Ok(result) => match result {
             Ok(block_index) => Ok(block_index),
             Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
@@ -162,7 +165,7 @@ pub async fn topup_self(icp_amount: u64, canister: Principal) -> CanisterResult<
         created_at_time: None,
     };
 
-    let transfer = transfer(MAINNET_LEDGER_CANISTER_ID, args).await;
+    let transfer = transfer(MAINNET_LEDGER_CANISTER_ID, &args).await;
 
     match transfer {
         Ok(result) => match result {
@@ -196,7 +199,7 @@ pub async fn topup_self_by_subaccount(
         created_at_time: None,
     };
 
-    let transfer = transfer(MAINNET_LEDGER_CANISTER_ID, args).await;
+    let transfer = transfer(MAINNET_LEDGER_CANISTER_ID, &args).await;
 
     match transfer {
         Ok(result) => match result {
@@ -231,18 +234,18 @@ pub async fn send_to_canister_after_approve(
         },
         created_at_time: None,
     };
-
-    let (result,): (Result<Nat, TransferFromError>,) =
-        ic_cdk::call(MAINNET_LEDGER_CANISTER_ID, "icrc2_transfer_from", (args,))
-            .await
-            .map_err(|err| {
-                ApiError::external_service_error(&format!("{:?}", err))
-                    .add_method_name("send_to_canister_after_approve")
-                    .add_source("toolkit_utils")
-            })?;
+    let result = Call::unbounded_wait(MAINNET_LEDGER_CANISTER_ID, "icrc2_transfer_from")
+        .with_arg(&args)
+        .await
+        .map_err(|err| {
+            ApiError::external_service_error(&format!("{:?}", err))
+                .add_method_name("send_to_canister_after_approve")
+                .add_source("toolkit_utils")
+        })?
+        .candid::<Nat>();
 
     match result {
-        Ok(block_index) => Ok(nat_to_u64(&block_index)),
+        Ok(response) => Ok(nat_to_u64(&response)),
         Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
             .add_method_name("send_to_canister_after_approve")
             .add_source("toolkit_utils")),
@@ -256,7 +259,7 @@ pub async fn notify_top_up_cycles(block_index: u64) -> CanisterResult<Nat> {
     match CyclesMintingService(MAINNET_CYCLES_MINTING_CANISTER_ID)
         .notify_top_up(NotifyTopUpArg {
             block_index,
-            canister_id: id(),
+            canister_id: canister_self(),
         })
         .await
     {
@@ -307,7 +310,7 @@ pub async fn notify_create(block_index: u64) -> CanisterResult<Principal> {
     match CyclesMintingService(MAINNET_CYCLES_MINTING_CANISTER_ID)
         .notify_create_canister(NotifyCreateCanisterArg {
             block_index,
-            controller: id(),
+            controller: canister_self(),
             subnet_selection: None,
             settings: None,
             subnet_type: None,
@@ -361,7 +364,7 @@ pub async fn get_icp_balance(principal: Principal) -> CanisterResult<Tokens> {
         account: principal_to_account_identifier(principal),
     };
 
-    match account_balance(MAINNET_LEDGER_CANISTER_ID, args).await {
+    match account_balance(MAINNET_LEDGER_CANISTER_ID, &args).await {
         Ok(tokens) => Ok(tokens),
         Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
             .add_method_name("get_icp_balance")
@@ -378,20 +381,27 @@ pub async fn get_icp_allowance_by_canister_subaccount(
             subaccount: None,
         },
         spender: Account {
-            owner: id(),
+            owner: canister_self(),
             subaccount: Some(Subaccount::from(principal).0),
         },
     };
 
-    let (allowance,): (Allowance,) =
-        ic_cdk::call(MAINNET_LEDGER_CANISTER_ID, "icrc2_allowance", (args,))
-            .await
-            .map_err(|err| {
-                ApiError::external_service_error(&format!("{:?}", err))
-                    .add_method_name("get_icp_allowance_by_canister_subaccount")
-                    .add_source("toolkit_utils")
-            })?;
-    Ok(allowance)
+    let allowance = Call::unbounded_wait(MAINNET_LEDGER_CANISTER_ID, "icrc2_allowance")
+        .with_arg(&args)
+        .await
+        .map_err(|err| {
+            ApiError::external_service_error(&format!("{:?}", err))
+                .add_method_name("get_icp_allowance_by_canister_subaccount")
+                .add_source("toolkit_utils")
+        })?
+        .candid::<Allowance>();
+
+    match allowance {
+        Ok(response) => Ok(response),
+        Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
+            .add_method_name("get_icp_allowance_by_canister_subaccount")
+            .add_source("toolkit_utils")),
+    }
 }
 
 pub async fn set_icp_approve_by_canister_subaccount(
@@ -402,7 +412,7 @@ pub async fn set_icp_approve_by_canister_subaccount(
     let args = ApproveArgs {
         from_subaccount: None,
         spender: Account {
-            owner: id(),
+            owner: canister_self(),
             subaccount: Some(Subaccount::from(principal).0),
         },
         amount,
@@ -413,24 +423,32 @@ pub async fn set_icp_approve_by_canister_subaccount(
         created_at_time: None,
     };
 
-    let (approve,): (Approve,) = ic_cdk::call(MAINNET_LEDGER_CANISTER_ID, "icrc2_approve", (args,))
+    let approve = Call::unbounded_wait(MAINNET_LEDGER_CANISTER_ID, "icrc2_approve")
+        .with_arg(&args)
         .await
         .map_err(|err| {
             ApiError::external_service_error(&format!("{:?}", err))
                 .add_method_name("set_icp_approve_by_canister_subaccount")
                 .add_source("toolkit_utils")
-        })?;
-    Ok(approve)
+        })?
+        .candid::<Approve>();
+
+    match approve {
+        Ok(response) => Ok(response),
+        Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
+            .add_method_name("set_icp_approve_by_canister_subaccount")
+            .add_source("toolkit_utils")),
+    }
 }
 
 pub async fn get_icp_balance_by_canister_subaccount(
     subaccount: Principal,
 ) -> CanisterResult<Tokens> {
     let args = AccountBalanceArgs {
-        account: AccountIdentifier::new(&id(), &Subaccount::from(subaccount)),
+        account: AccountIdentifier::new(&canister_self(), &Subaccount::from(subaccount)),
     };
 
-    match account_balance(MAINNET_LEDGER_CANISTER_ID, args).await {
+    match account_balance(MAINNET_LEDGER_CANISTER_ID, &args).await {
         Ok(tokens) => Ok(tokens),
         Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
             .add_method_name("get_icp_balance_by_canister_subaccount")
@@ -445,7 +463,7 @@ pub async fn get_icp_balance_by_account_identifier(
         account: account_identifier,
     };
 
-    match account_balance(MAINNET_LEDGER_CANISTER_ID, args).await {
+    match account_balance(MAINNET_LEDGER_CANISTER_ID, &args).await {
         Ok(tokens) => Ok(tokens),
         Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
             .add_method_name("get_icp_balance_by_account_identifier")
@@ -485,7 +503,7 @@ async fn get_block(block_index: BlockIndex) -> Option<Block> {
         length: 1,
     };
 
-    if let Ok(blocks_result) = query_blocks(MAINNET_LEDGER_CANISTER_ID, args.clone()).await {
+    if let Ok(blocks_result) = query_blocks(MAINNET_LEDGER_CANISTER_ID, &args).await {
         if !blocks_result.blocks.is_empty() {
             return blocks_result.blocks.into_iter().next();
         }
@@ -493,7 +511,7 @@ async fn get_block(block_index: BlockIndex) -> Option<Block> {
         if let Some(func) = blocks_result.archived_blocks.into_iter().find_map(|b| {
             (b.start <= block_index && (block_index - b.start) < b.length).then_some(b.callback)
         }) {
-            if let Ok(range) = query_archived_blocks(&func, args).await {
+            if let Ok(range) = query_archived_blocks(&func, &args).await {
                 match range {
                     Ok(_range) => return _range.blocks.into_iter().next(),
                     Err(_) => return None,
@@ -533,20 +551,21 @@ pub async fn send_icp_to_canister_after_approve(
         amount: Nat::from(icp_amount - ICP_TRANSACTION_FEE),
         fee: None,
         to: Account {
-            owner: id(),
+            owner: canister_self(),
             subaccount: Some(Subaccount::from(user_principal).0),
         },
         created_at_time: None,
     };
 
-    let (result,): (Result<Nat, TransferFromError>,) =
-        ic_cdk::call(MAINNET_LEDGER_CANISTER_ID, "icrc2_transfer_from", (args,))
-            .await
-            .map_err(|err| {
-                ApiError::external_service_error(&format!("{:?}", err))
-                    .add_method_name("send_to_canister_after_approve")
-                    .add_source("toolkit_utils")
-            })?;
+    let result = Call::unbounded_wait(MAINNET_LEDGER_CANISTER_ID, "icrc2_transfer_from")
+        .with_arg(&args)
+        .await
+        .map_err(|err| {
+            ApiError::external_service_error(&format!("{:?}", err))
+                .add_method_name("send_to_canister_after_approve")
+                .add_source("toolkit_utils")
+        })?
+        .candid::<Nat>();
 
     match result {
         Ok(block_index) => Ok(nat_to_u64(&block_index)),
@@ -610,45 +629,46 @@ pub async fn notify_top_up_cycles_external_canister(
     }
 }
 
-// pub async fn top_up_cycles_by_approve(
-//     icp_amount: u64,
-//     from: Principal,
-//     canister: Principal,
-// ) -> CanisterResult<u64> {
-//     let amount = Tokens::from_e8s(icp_amount - ICP_TRANSACTION_FEE);
+pub async fn top_up_cycles_by_approve(
+    icp_amount: u64,
+    from: Principal,
+    canister: Principal,
+) -> CanisterResult<u64> {
+    let amount = Tokens::from_e8s(icp_amount - ICP_TRANSACTION_FEE);
 
-//     let args = TransferFromArgs {
-//         memo: Some(Memo::from(vec![0x50, 0x55, 0x50, 0x54])), // MEMO_TOP_UP_CANISTER in hex bytes
-//         amount: amount.e8s().into(),
-//         fee: None,
-//         to: Account {
-//             owner: MAINNET_CYCLES_MINTING_CANISTER_ID,
-//             subaccount: Some(Subaccount::from(canister).0),
-//         },
-//         created_at_time: None,
-//         spender_subaccount: Some(Subaccount::from(from).0),
-//         from: Account {
-//             owner: from,
-//             subaccount: None,
-//         },
-//     };
+    let args = TransferFromArgs {
+        memo: Some(Memo::from(0x50555054)),
+        amount: amount.e8s().into(),
+        fee: None,
+        to: Account {
+            owner: MAINNET_CYCLES_MINTING_CANISTER_ID,
+            subaccount: Some(Subaccount::from(canister).0),
+        },
+        created_at_time: None,
+        spender_subaccount: Some(Subaccount::from(from).0),
+        from: Account {
+            owner: from,
+            subaccount: None,
+        },
+    };
 
-//     let (result,): (Result<Nat, TransferFromError>,) =
-//         ic_cdk::call(MAINNET_LEDGER_CANISTER_ID, "icrc2_transfer_from", (args,))
-//             .await
-//             .map_err(|err| {
-//                 ApiError::external_service_error(&format!("{:?}", err))
-//                     .add_method_name("top_up_cycles_by_approve")
-//                     .add_source("toolkit_utils")
-//             })?;
+    let result = Call::unbounded_wait(MAINNET_LEDGER_CANISTER_ID, "icrc2_transfer_from")
+        .with_arg(&args)
+        .await
+        .map_err(|err| {
+            ApiError::external_service_error(&format!("{:?}", err))
+                .add_method_name("top_up_cycles_by_approve")
+                .add_source("toolkit_utils")
+        })?
+        .candid::<Nat>();
 
-//     match result {
-//         Ok(block_index) => Ok(nat_to_u64(&block_index)),
-//         Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
-//             .add_method_name("top_up_cycles_by_approve")
-//             .add_source("toolkit_utils")),
-//     }
-// }
+    match result {
+        Ok(block_index) => Ok(nat_to_u64(&block_index)),
+        Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
+            .add_method_name("top_up_cycles_by_approve")
+            .add_source("toolkit_utils")),
+    }
+}
 
 // USED FOR CANISTER TOPUP
 // USER REGISTRY
@@ -674,7 +694,7 @@ pub async fn transfer_to_cmc(
         }),
     };
 
-    match transfer(MAINNET_LEDGER_CANISTER_ID, args).await {
+    match transfer(MAINNET_LEDGER_CANISTER_ID, &args).await {
         Ok(result) => match result {
             Ok(block_index) => Ok(block_index),
             Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
