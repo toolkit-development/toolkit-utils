@@ -1,5 +1,6 @@
 pub type Ballots = u64;
 pub type Time = u64;
+pub type Blockheight = u64;
 
 // cycles related
 pub static TRILLION_CYCLES: u64 = 1_000_000_000_000; // 1 trillion cycles
