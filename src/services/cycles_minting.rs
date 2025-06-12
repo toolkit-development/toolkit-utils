@@ -173,6 +173,9 @@ impl CyclesMintingService {
     pub async fn get_build_metadata(&self) -> Result<(String,)> {
         ic_cdk::call(self.0, "get_build_metadata", ()).await
     }
+    pub async fn get_default_subnets(&self) -> Result<(Vec<Principal>,)> {
+        ic_cdk::call(self.0, "get_default_subnets", ()).await
+    }
     pub async fn get_icp_xdr_conversion_rate(&self) -> Result<(IcpXdrConversionRateResponse,)> {
         ic_cdk::call(self.0, "get_icp_xdr_conversion_rate", ()).await
     }

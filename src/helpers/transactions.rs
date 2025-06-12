@@ -13,7 +13,7 @@ use icrc_ledger_types::{
     icrc2::{
         allowance::{Allowance, AllowanceArgs},
         approve::ApproveArgs,
-        transfer_from::TransferFromArgs,
+        transfer_from::{TransferFromArgs, TransferFromError},
     },
     icrc3::transactions::Approve,
 };
@@ -242,10 +242,13 @@ pub async fn send_to_canister_after_approve(
                 .add_method_name("send_to_canister_after_approve")
                 .add_source("toolkit_utils")
         })?
-        .candid::<Nat>();
+        .candid::<Result<Nat, TransferFromError>>();
 
     match result {
-        Ok(response) => Ok(nat_to_u64(&response)),
+        Ok(Ok(response)) => Ok(nat_to_u64(&response)),
+        Ok(Err(err)) => Err(ApiError::external_service_error(&format!("{:?}", err))
+            .add_method_name("send_to_canister_after_approve")
+            .add_source("toolkit_utils")),
         Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
             .add_method_name("send_to_canister_after_approve")
             .add_source("toolkit_utils")),
@@ -562,15 +565,18 @@ pub async fn send_icp_to_canister_after_approve(
         .await
         .map_err(|err| {
             ApiError::external_service_error(&format!("{:?}", err))
-                .add_method_name("send_to_canister_after_approve")
+                .add_method_name("send_to_canister_after_approve_1")
                 .add_source("toolkit_utils")
         })?
-        .candid::<Nat>();
+        .candid::<Result<Nat, TransferFromError>>();
 
     match result {
-        Ok(block_index) => Ok(nat_to_u64(&block_index)),
+        Ok(Ok(block_index)) => Ok(nat_to_u64(&block_index)),
+        Ok(Err(err)) => Err(ApiError::external_service_error(&format!("{:?}", err))
+            .add_method_name("send_to_canister_after_approve_2")
+            .add_source("toolkit_utils")),
         Err(err) => Err(ApiError::external_service_error(&format!("{:?}", err))
-            .add_method_name("send_to_canister_after_approve")
+            .add_method_name("send_to_canister_after_approve_3")
             .add_source("toolkit_utils")),
     }
 }
